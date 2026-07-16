@@ -23,7 +23,7 @@ jobs:
 
       # Always keep the SARIF as a downloadable artifact (works on any repo).
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: newscan-sarif
           path: newscan.sarif
@@ -33,6 +33,6 @@ jobs:
       # where code scanning isn't enabled — the scan gate already fails the job on findings.
       - if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: newscan.sarif
