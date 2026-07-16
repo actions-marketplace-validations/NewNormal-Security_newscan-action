@@ -1,0 +1,108 @@
+name: 'NewScan Security Scan'
+description: 'Run a NewScan API/web security scan as a CI gate — SARIF output + severity fail. Requires NewScan Pro.'
+author: 'NewNormal Security'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  target:
+    description: 'http(s) URL to scan (required for api/web modes)'
+    required: true
+  license:
+    description: 'NewScan Pro license token — store as a secret and pass secrets.NEWSCAN_LICENSE'
+    required: true
+  scan-mode:
+    description: 'api | web | network | wifi | segmentation'
+    default: 'api'
+  profile:
+    description: 'quick | baseline | full | safe (quick/baseline need no provider key)'
+    default: 'quick'
+  fail-on:
+    description: 'severity that fails the job: critical | high | medium | low | info'
+    default: 'high'
+  sarif:
+    description: 'path (within the workspace) to write SARIF 2.1.0'
+    default: 'newscan.sarif'
+  goal:
+    description: 'optional scan goal'
+    default: ''
+  model:
+    description: 'optional model id (full/safe profiles)'
+    default: ''
+  token-budget:
+    description: 'optional AI token budget'
+    default: ''
+  config:
+    description: 'optional path to a UI-exported JSON config (extra options: auth, scope, roles)'
+    default: ''
+  api-base:
+    description: 'NewNormal license/token service base URL (override for testing only)'
+    default: 'https://newnormalsecurity.com'
+
+outputs:
+  sarif:
+    description: 'path to the written SARIF file'
+    value: ${{ steps.scan.outputs.sarif }}
+  exit-code:
+    description: 'gate exit code — 0 pass, 1 finding at/above fail-on, 2 error'
+    value: ${{ steps.scan.outputs.exit_code }}
+
+runs:
+  using: composite
+  steps:
+    # Exchange the Pro license for a short-lived, read-only pull credential for the private image.
+    # The service validates the license live, so a revoked/expired license can't pull.
+    - id: auth
+      shell: bash
+      env:
+        LICENSE: ${{ inputs.license }}
+        API_BASE: ${{ inputs.api-base }}
+      run: |
+        set -euo pipefail
+        resp="$(curl -fsS -X POST "$API_BASE/api/ci/pull-token" \
+          -H 'content-type: application/json' \
+          --data "$(jq -nc --arg l "$LICENSE" '{license:$l}')")" || {
+            echo "::error::Could not get a pull token — is your NewScan Pro license valid and active?"
+            exit 2; }
+        user="$(jq -r '.username' <<<"$resp")"
+        token="$(jq -r '.token' <<<"$resp")"
+        image="$(jq -r '.image' <<<"$resp")"
+        if [ -z "$image" ] || [ "$image" = "null" ] || [ -z "$token" ] || [ "$token" = "null" ]; then
+          echo "::error::License check failed: $(jq -r '.error // "unknown error"' <<<"$resp")"
+          exit 2
+        fi
+        echo "::add-mask::$token"
+        printf '%s' "$token" | docker login ghcr.io -u "$user" --password-stdin
+        echo "image=$image" >> "$GITHUB_OUTPUT"
+
+    # Run the scan through the Pro-gated entrypoint. The container writes SARIF into the mounted
+    # workspace so a following github/codeql-action/upload-sarif step can pick it up.
+    - id: scan
+      shell: bash
+      env:
+        LICENSE: ${{ inputs.license }}
+        IMAGE: ${{ steps.auth.outputs.image }}
+      run: |
+        set -euo pipefail
+        args=( "${{ inputs.target }}"
+               --scan-mode "${{ inputs.scan-mode }}"
+               --profile   "${{ inputs.profile }}"
+               --fail-on   "${{ inputs.fail-on }}"
+               --sarif     "${{ inputs.sarif }}" )
+        [ -n "${{ inputs.goal }}" ]         && args+=( --goal "${{ inputs.goal }}" )
+        [ -n "${{ inputs.model }}" ]        && args+=( --model "${{ inputs.model }}" )
+        [ -n "${{ inputs.token-budget }}" ] && args+=( --token-budget "${{ inputs.token-budget }}" )
+        [ -n "${{ inputs.config }}" ]       && args+=( --config "${{ inputs.config }}" )
+        set +e
+        docker run --rm \
+          -e NEWSCAN_LICENSE_KEY="$LICENSE" \
+          -e NEWSCAN_DEVICE_ID="gha-${GITHUB_REPOSITORY}" \
+          -e PYTHONPATH=/app \
+          -v "${{ github.workspace }}:/work" -w /work \
+          "$IMAGE" \
+          python -m newscan.ci_gate "${args[@]}"
+        code=$?
+        echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+        echo "sarif=${{ inputs.sarif }}" >> "$GITHUB_OUTPUT"
+        exit $code

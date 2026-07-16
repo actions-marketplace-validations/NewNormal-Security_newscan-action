@@ -1,0 +1,27 @@
+# Gate a deploy on a NewScan security scan and publish findings to GitHub code scanning.
+# Copy into .github/workflows/ of the repo you want to protect.
+name: security-gate
+on:
+  deployment_status: {}          # runs after a deployment reports success (has the target URL)
+
+permissions:
+  security-events: write         # required by upload-sarif
+  contents: read
+
+jobs:
+  scan:
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: NewNormal-Security/newscan-action@v1
+        with:
+          target: ${{ github.event.deployment_status.target_url }}
+          scan-mode: api
+          profile: quick          # deterministic, no provider key needed
+          fail-on: high           # fail the job on any High+ finding
+          license: ${{ secrets.NEWSCAN_LICENSE }}
+
+      - if: always()              # upload even when the gate failed the job
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: newscan.sarif
