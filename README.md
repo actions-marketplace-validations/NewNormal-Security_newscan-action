@@ -20,6 +20,12 @@ free — see the NewScan docs.)
 
 A full deploy-gating workflow is in [`examples/security-gate.yml`](examples/security-gate.yml).
 
+> **SARIF → code scanning:** `upload-sarif` surfaces findings in the repo's Security tab. That needs
+> code scanning enabled — free on **public** repos, or **GitHub Advanced Security** on private ones.
+> The example keeps the SARIF as a downloadable **artifact** regardless, and marks the upload
+> `continue-on-error` so a repo without code scanning still passes (the scan gate itself already
+> fails the job on findings).
+
 ## Inputs
 
 | Input | Default | Description |
