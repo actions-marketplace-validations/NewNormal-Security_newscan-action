@@ -1,0 +1,40 @@
+# Pattern B: scan the platform's per-PR PREVIEW deploy before it can merge to production. Best when
+# the app needs real infra (DB, etc.) that the preview environment provides. Make this a REQUIRED
+# status check so a PR can't merge (→ prod) unless the scan passes.
+#
+# Protected previews (login wall / WAF) need the scanner let in. On Vercel: enable "Protection
+# Bypass for Automation" and pass its token as the x-vercel-protection-bypass header below.
+name: security-scan (preview)
+on:
+  deployment_status: {}        # fires when the preview deploy reports a state
+
+permissions:
+  security-events: write
+  contents: read
+
+jobs:
+  scan:
+    # only successful, non-production (preview) deployments
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment != 'Production'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: NewNormal-Security/newscan-action@v1
+        with:
+          target: ${{ github.event.deployment_status.target_url }}
+          scan-mode: web
+          profile: quick
+          fail-on: high
+          license: ${{ secrets.NEWSCAN_LICENSE }}
+          # Reach the protected preview. Vercel: Settings → Deployment Protection →
+          # Protection Bypass for Automation → store the secret as VERCEL_AUTOMATION_BYPASS_SECRET.
+          extra-headers: "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}"
+
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with: { name: newscan-sarif, path: newscan.sarif }
+      - if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with: { sarif_file: newscan.sarif }

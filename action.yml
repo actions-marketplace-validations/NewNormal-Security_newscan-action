@@ -36,6 +36,12 @@ inputs:
   config:
     description: 'optional path to a UI-exported JSON config (extra options: auth, scope, roles)'
     default: ''
+  extra-headers:
+    description: >-
+      Extra request headers so the scan can reach a PRE-PROD target through preview-protection or a
+      WAF allow rule. One "Name: Value" per line, sent on every request. Example (Vercel protected
+      preview): "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}".
+    default: ''
   api-base:
     description: 'NewNormal license/token service base URL (override for testing only)'
     default: 'https://newnormalsecurity.com'
@@ -83,6 +89,7 @@ runs:
       env:
         LICENSE: ${{ inputs.license }}
         IMAGE: ${{ steps.auth.outputs.image }}
+        EXTRA_HEADERS: ${{ inputs.extra-headers }}
       run: |
         set -euo pipefail
         args=( "${{ inputs.target }}"
@@ -94,8 +101,14 @@ runs:
         [ -n "${{ inputs.model }}" ]        && args+=( --model "${{ inputs.model }}" )
         [ -n "${{ inputs.token-budget }}" ] && args+=( --token-budget "${{ inputs.token-budget }}" )
         [ -n "${{ inputs.config }}" ]       && args+=( --config "${{ inputs.config }}" )
+        # One --header per non-blank line of extra-headers (preview-protection/WAF bypass).
+        while IFS= read -r line; do
+          [ -n "$(printf '%s' "$line" | tr -d '[:space:]')" ] && args+=( --header "$line" )
+        done <<< "$EXTRA_HEADERS"
         set +e
-        docker run --rm \
+        # --network host so target: http://localhost:PORT reaches an app started in the same job
+        # (the "ephemeral service" pattern); external preview/staging URLs work either way.
+        docker run --rm --network host \
           -e NEWSCAN_LICENSE_KEY="$LICENSE" \
           -e NEWSCAN_DEVICE_ID="gha-${GITHUB_REPOSITORY}" \
           -e PYTHONPATH=/app \

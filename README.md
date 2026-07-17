@@ -36,6 +36,7 @@ A full deploy-gating workflow is in [`examples/security-gate.yml`](examples/secu
 | `profile` | `quick` | `quick` \| `baseline` (no key) · `full` \| `safe` (BYOK) |
 | `fail-on` | `high` | Severity that fails the job: `critical`…`info` |
 | `sarif` | `newscan.sarif` | Where to write SARIF 2.1.0 (in the workspace) |
+| `extra-headers` | — | Extra request headers (one `Name: Value` per line) to reach a protected pre-prod target — e.g. `x-vercel-protection-bypass: <token>`. Sent on every request. |
 | `goal`, `model`, `token-budget`, `config` | — | Optional; map to the `python -m newscan` flags |
 
 ## Outputs
@@ -44,6 +45,31 @@ A full deploy-gating workflow is in [`examples/security-gate.yml`](examples/secu
 |---|---|
 | `sarif` | Path to the written SARIF file |
 | `exit-code` | `0` pass · `1` finding at/above `fail-on` · `2` error |
+
+## Scan pre-production, not production
+
+The point of this action is to catch issues **before** a release reaches production — so point it at
+a **release candidate the scanner can reach cleanly**, never at hardened prod (a production WAF/bot
+protection will block the scan and give you misleading results). Two patterns:
+
+**A — Spin the app up in the CI job (recommended default).** Start the API (and a throwaway DB) as a
+job `service`, scan `http://localhost:PORT`. No external environment, no WAF, isolated, fast, and it
+scans the exact commit. The action runs `--network host`, so `localhost` reaches the service. See
+[`examples/ephemeral-service.yml`](examples/ephemeral-service.yml).
+
+**B — Scan the per-PR preview deploy.** Vercel/Netlify/Cloudflare/etc. mint an ephemeral preview URL
+per PR — that *is* your pre-prod environment (no standing "staging" box to maintain). Scan the
+preview URL and make it a **required status check** so a PR can't merge (→ prod) unless it passes.
+See [`examples/preview-gate.yml`](examples/preview-gate.yml).
+
+Protected previews (login wall / WAF) need the scanner let in — use `extra-headers`:
+- **Vercel:** enable **Deployment Protection → Protection Bypass for Automation**, store the token as
+  a secret, and pass `extra-headers: "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}"`.
+- **Generally:** allowlist the scanner (its `User-Agent: NewScan/…`, its IP, or a shared secret
+  header) in the firewall **for the preview only**, and keep aggressive challenge modes off there.
+
+If the scanner is blocked, it now says so explicitly (an *"Scan is being blocked by the target"*
+observation) instead of a misleading green "0 findings" — that's your cue to use one of the above.
 
 ## How it works
 

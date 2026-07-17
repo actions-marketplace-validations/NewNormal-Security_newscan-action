@@ -1,0 +1,31 @@
+# Pattern A (recommended default): scan a release candidate BEFORE production by starting the API
+# inside the CI job and scanning localhost. No external environment, no WAF, fully isolated, and it
+# scans the exact commit. Best when the API can run as a container.
+name: security-scan
+on:
+  pull_request: {}
+
+permissions:
+  security-events: write
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    services:
+      # Your app, built for this commit. Add a db/redis service and env here if it needs them.
+      api:
+        image: ghcr.io/your-org/your-api:${{ github.sha }}
+        ports: ['8080:8080']
+    steps:
+      - uses: NewNormal-Security/newscan-action@v1
+        with:
+          target: http://localhost:8080      # reachable because the action runs --network host
+          scan-mode: api
+          profile: quick
+          fail-on: high
+          license: ${{ secrets.NEWSCAN_LICENSE }}
+
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with: { name: newscan-sarif, path: newscan.sarif }
