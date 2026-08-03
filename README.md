@@ -83,5 +83,5 @@ revoked or expired license can't run the integration.
 
 ## Getting a license
 
-Buy or manage NewScan Pro at <https://newnormalsecurity.com/pricing>, then add the license token as
+Buy or manage NewScan Pro at <https://newnormalsecurity.com/online-packs#pricing>, then add the license token as
 an Actions secret named `NEWSCAN_LICENSE` in your repository or organization.
