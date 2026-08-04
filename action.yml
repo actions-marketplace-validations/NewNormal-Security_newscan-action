@@ -2,8 +2,11 @@ name: 'NewScan Security Scan'
 description: 'Run a NewScan API/web security scan as a CI gate — SARIF output + severity fail. Requires NewScan Pro.'
 author: 'NewNormal Security'
 branding:
-  icon: 'shield'
-  color: 'green'
+  # Marketplace allows only a Feather glyph + one of 8 colors — no custom image, so this is the
+  # closest we get to the NN mark: 'blue' is the nearest allowed color to brand cyan #06B6D4, and
+  # 'crosshair' echoes the reticle instead of the shield every other security action uses.
+  icon: 'crosshair'
+  color: 'blue'
 
 inputs:
   target:
