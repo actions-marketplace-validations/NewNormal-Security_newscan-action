@@ -1,9 +1,20 @@
 # NewScan Security Scan — GitHub Action
 
-Run [NewScan](https://newnormalsecurity.com) as a CI security gate: it scans a deployed URL, writes
-SARIF, and fails the job on findings at or above a severity you choose. **This packaged integration
-is a NewScan Pro feature.** (Self-hosting NewScan and calling `python -m newscan` yourself stays
-free — see the NewScan docs.)
+**All signal, no noise.** [NewScan](https://newnormalsecurity.com/newscan) is a free, self-hosted
+scanner for penetration tests — **APIs, web apps, network & infrastructure, Wi-Fi, and segmentation
+in one tool**. It runs the full deterministic scan on your box, reproduces every finding before it
+records it, and only then offers an optional AI pass (bring your own key). Findings carry one
+calibrated severity that maps to PCI DSS / SOC 2 / ISO 27001 / HITRUST / FedRAMP ratings and
+remediation SLAs.
+
+**This repo is the CI gate**: run a scan on every PR or deploy, get SARIF, fail the build on
+findings at or above a severity you choose.
+
+- 🡒 **Get NewScan free:** <https://newnormalsecurity.com/newscan#get> — email to download, no
+  account needed to run it locally.
+- 🡒 **Pro (this action, plus out-of-band detection):**
+  <https://newnormalsecurity.com/online-packs#pricing>
+- 🡒 **Roadmap:** <https://newnormalsecurity.com/roadmap>
 
 ## Usage
 
@@ -14,15 +25,17 @@ free — see the NewScan docs.)
     license: ${{ secrets.NEWSCAN_LICENSE }}   # your Pro license — the only secret you need
     fail-on: high
 - if: always()
-  uses: github/codeql-action/upload-sarif@v3
+  uses: github/codeql-action/upload-sarif@v4
   with: { sarif_file: newscan.sarif }
 ```
 
-A full deploy-gating workflow is in [`examples/security-gate.yml`](examples/security-gate.yml).
+Three complete workflows are in [`examples/`](examples/): a
+[deploy gate](examples/security-gate.yml), an [ephemeral service](examples/ephemeral-service.yml),
+and a [per-PR preview gate](examples/preview-gate.yml).
 
 > **SARIF → code scanning:** `upload-sarif` surfaces findings in the repo's Security tab. That needs
 > code scanning enabled — free on **public** repos, or **GitHub Advanced Security** on private ones.
-> The example keeps the SARIF as a downloadable **artifact** regardless, and marks the upload
+> The examples keep the SARIF as a downloadable **artifact** regardless, and mark the upload
 > `continue-on-error` so a repo without code scanning still passes (the scan gate itself already
 > fails the job on findings).
 
@@ -68,20 +81,40 @@ Protected previews (login wall / WAF) need the scanner let in — use `extra-hea
 - **Generally:** allowlist the scanner (its `User-Agent: NewScan/…`, its IP, or a shared secret
   header) in the firewall **for the preview only**, and keep aggressive challenge modes off there.
 
-If the scanner is blocked, it now says so explicitly (an *"Scan is being blocked by the target"*
+If the scanner is blocked it says so explicitly (a *"Scan is being blocked by the target"*
 observation) instead of a misleading green "0 findings" — that's your cue to use one of the above.
+
+**Only scan what you own or are authorised to test.** The gate is built for your own pre-prod
+environments.
 
 ## How it works
 
-The action exchanges your Pro license for a short-lived, read-only token to pull the private NewScan
-image, then runs the scan through a Pro-gated entrypoint. Your license is validated live, so a
-revoked or expired license can't run the integration.
+The action exchanges your Pro license for a short-lived, read-only token to pull the NewScan image,
+then runs the scan through a Pro-gated entrypoint. Your license is validated live, so a revoked or
+expired license can't run the integration.
 
 - `quick`/`api` needs no provider key and no browser — the fastest gate.
 - `web` uses the image's bundled headless Chromium.
 - `full`/`safe` use the AI layer: add your provider key as a secret and pass it via `env:`.
 
-## Getting a license
+## Free vs Pro
 
-Buy or manage NewScan Pro at <https://newnormalsecurity.com/online-packs#pricing>, then add the license token as
-an Actions secret named `NEWSCAN_LICENSE` in your repository or organization.
+**Local, in-band scanning is free** — the whole deterministic engine, on as many machines as you
+like, no license. **Pro** covers what needs a listener on the public internet (out-of-band /
+blind-vulnerability detection) plus packaged integrations like this action. Self-hosting NewScan and
+calling `python -m newscan` in your own CI stays free.
+
+Get a license at <https://newnormalsecurity.com/online-packs#pricing>, then add the token as an
+Actions secret named `NEWSCAN_LICENSE` on the repository or organization.
+
+## Reporting a vulnerability
+
+Please don't open a public issue — see [SECURITY.md](SECURITY.md).
+
+## License
+
+This action wrapper is [MIT](LICENSE). NewScan itself is proprietary software, free to download and
+run locally under the [EULA](https://newnormalsecurity.com/eula).
+
+---
+Built by [NewNormal Security](https://newnormalsecurity.com).
