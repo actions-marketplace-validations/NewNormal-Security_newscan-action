@@ -1,6 +1,6 @@
 # NewScan Security Scan — GitHub Action
 
-**All signal, no noise.** [NewScan](https://newnormalsecurity.com/newscan) is a free, self-hosted
+**All signal, no noise.** [NewScan](https://newnormalsecurity.com/newscan?utm_campaign=github) is a free, self-hosted
 scanner for penetration tests — **APIs, web apps, network & infrastructure, Wi-Fi, and segmentation
 in one tool**. It runs the full deterministic scan on your box, reproduces every finding before it
 records it, and only then offers an optional AI pass (bring your own key). Findings carry one
@@ -10,11 +10,11 @@ remediation SLAs.
 **This repo is the CI gate**: run a scan on every PR or deploy, get SARIF, fail the build on
 findings at or above a severity you choose.
 
-- 🡒 **Get NewScan free:** <https://newnormalsecurity.com/newscan#get> — email to download, no
-  account needed to run it locally.
+- 🡒 **Get NewScan free:** <https://newnormalsecurity.com/newscan?utm_campaign=github#get> — email to
+  download, no account needed to run it locally.
 - 🡒 **Pro (this action, plus out-of-band detection):**
-  <https://newnormalsecurity.com/online-packs#pricing>
-- 🡒 **Roadmap:** <https://newnormalsecurity.com/roadmap>
+  <https://newnormalsecurity.com/online-packs?utm_campaign=github#pricing>
+- 🡒 **Roadmap:** <https://newnormalsecurity.com/roadmap?utm_campaign=github>
 
 ## Usage
 
@@ -104,7 +104,7 @@ like, no license. **Pro** covers what needs a listener on the public internet (o
 blind-vulnerability detection) plus packaged integrations like this action. Self-hosting NewScan and
 calling `python -m newscan` in your own CI stays free.
 
-Get a license at <https://newnormalsecurity.com/online-packs#pricing>, then add the token as an
+Get a license at <https://newnormalsecurity.com/online-packs?utm_campaign=github#pricing>, then add the token as an
 Actions secret named `NEWSCAN_LICENSE` on the repository or organization.
 
 ## Reporting a vulnerability
@@ -114,7 +114,7 @@ Please don't open a public issue — see [SECURITY.md](SECURITY.md).
 ## License
 
 This action wrapper is [MIT](LICENSE). NewScan itself is proprietary software, free to download and
-run locally under the [EULA](https://newnormalsecurity.com/eula).
+run locally under the [EULA](https://newnormalsecurity.com/eula?utm_campaign=github).
 
 ---
-Built by [NewNormal Security](https://newnormalsecurity.com).
+Built by [NewNormal Security](https://newnormalsecurity.com/?utm_campaign=github).
