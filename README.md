@@ -4,7 +4,7 @@
 scanner for penetration tests — **APIs, web apps, network & infrastructure, Wi-Fi, and segmentation
 in one tool**. It runs the full deterministic scan on your box, reproduces every finding before it
 records it, and only then offers an optional AI pass (bring your own key). Findings carry one
-calibrated severity that maps to PCI DSS / SOC 2 / ISO 27001 / HITRUST / FedRAMP ratings and
+calibrated severity that maps to PCI DSS / SOC 2 / ISO 27001 / HITRUST / HIPAA / NIST 800-53 ratings and
 remediation SLAs.
 
 **This repo is the CI gate**: run a scan on every PR or deploy, get SARIF, fail the build on
