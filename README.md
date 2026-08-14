@@ -33,6 +33,21 @@ Three complete workflows are in [`examples/`](examples/): a
 [deploy gate](examples/security-gate.yml), an [ephemeral service](examples/ephemeral-service.yml),
 and a [per-PR preview gate](examples/preview-gate.yml).
 
+## Pro licensing
+
+1. Get a NewScan Pro **CI token** from the [Pro plan page](https://newnormalsecurity.com/online-packs?utm_campaign=github#pricing). Use a CI token, not a device-bound desktop license.
+2. In the repository or organization, open **Settings → Secrets and variables → Actions** and create a secret named `NEWSCAN_LICENSE`. Paste the token as its value.
+3. Pass it only to this action's required `license` input:
+
+   ```yaml
+   - uses: NewNormal-Security/newscan-action@v1
+     with:
+       target: https://staging.example.com
+       license: ${{ secrets.NEWSCAN_LICENSE }}
+   ```
+
+The action maps that secret to `NEWSCAN_LICENSE_KEY` inside its private scanner container and sets a stable runner identity for the repository. Do not echo the token or add it to application configuration. Each run validates the license before obtaining a short-lived, read-only image-pull credential; expired or revoked tokens stop the gate before the scan starts.
+
 > **SARIF → code scanning:** `upload-sarif` surfaces findings in the repo's Security tab. That needs
 > code scanning enabled — free on **public** repos, or **GitHub Advanced Security** on private ones.
 > The examples keep the SARIF as a downloadable **artifact** regardless, and mark the upload
