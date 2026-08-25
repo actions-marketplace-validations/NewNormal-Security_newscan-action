@@ -43,7 +43,7 @@ inputs:
     description: >-
       Extra request headers so the scan can reach a PRE-PROD target through preview-protection or a
       WAF allow rule. One "Name: Value" per line, sent on every request. Example (Vercel protected
-      preview): "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}".
+      preview): "x-vercel-protection-bypass: <token>".
     default: ''
   api-base:
     description: 'NewNormal license/token service base URL (override for testing only)'
