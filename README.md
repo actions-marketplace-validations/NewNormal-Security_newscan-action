@@ -35,8 +35,8 @@ and a [per-PR preview gate](examples/preview-gate.yml).
 
 ## Pro licensing
 
-1. Get a NewScan Pro **CI token** from the [Pro plan page](https://newnormalsecurity.com/online-packs?utm_campaign=github#pricing). Use a CI token, not a device-bound desktop license.
-2. In the repository or organization, open **Settings → Secrets and variables → Actions** and create a secret named `NEWSCAN_LICENSE`. Paste the token as its value.
+1. Get NewScan Pro at the [plan page](https://newnormalsecurity.com/online-packs?utm_campaign=github#pricing) — or paste any Pro license you already have, even one activated on your workstation.
+2. In the repository or organization, open **Settings → Secrets and variables → Actions** and create a secret named `NEWSCAN_LICENSE`. Paste the license token as its value.
 3. Pass it only to this action's required `license` input:
 
    ```yaml
@@ -46,7 +46,22 @@ and a [per-PR preview gate](examples/preview-gate.yml).
        license: ${{ secrets.NEWSCAN_LICENSE }}
    ```
 
-The action maps that secret to `NEWSCAN_LICENSE_KEY` inside its private scanner container and sets a stable runner identity for the repository. Do not echo the token or add it to application configuration. Each run validates the license before obtaining a short-lived, read-only image-pull credential; expired or revoked tokens stop the gate before the scan starts.
+Licenses carry **3 concurrent seats** — one per device or repository. The action maps the secret to `NEWSCAN_LICENSE_KEY` inside its private scanner container and sets a stable runner identity for the repository; if the token is bound to another device (e.g. your desktop), the first run claims a seat for the repository automatically through our licensing service — hosted runners need no manual step. Out of seats? The gate fails with a pointer to release one from the [account page](https://newnormalsecurity.com/account). Do not echo the token or add it to application configuration. Each run validates the license before obtaining a short-lived, read-only image-pull credential; expired or revoked tokens stop the gate before the scan starts.
+
+### Calling the container directly (digest-pinned, no action)
+
+The same rules apply. Pass `NEWSCAN_LICENSE_KEY`; the runner identity comes from `GITHUB_REPOSITORY` automatically (`gha-<owner>/<repo>`), and elsewhere you set `NEWSCAN_DEVICE_ID` to any fixed string unique to the pipeline (Jenkins convention: `jenkins-<controller>-<job>`). Mount the workspace so the SARIF survives the `--rm`:
+
+```bash
+docker run --rm \
+  -e NEWSCAN_LICENSE_KEY="$NEWSCAN_LICENSE" \
+  -v "$PWD:/work" -w /work \
+  ghcr.io/newnormal-security/newscan@sha256:<digest> \
+  python -m newscan.ci_gate https://staging.example.com \
+    --scan-mode api --profile quick --fail-on high --sarif /work/newscan.sarif
+```
+
+The Pro image is pull-protected: exchange the license for a short-lived read-only pull credential via `POST /api/ci/pull-token` (what the action's first step does), or use your org's own read-only PAT.
 
 > **SARIF → code scanning:** `upload-sarif` surfaces findings in the repo's Security tab. That needs
 > code scanning enabled — free on **public** repos, or **GitHub Advanced Security** on private ones.
